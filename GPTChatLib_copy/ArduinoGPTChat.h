@@ -5,20 +5,25 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "Audio.h"
+#include "FS.h"
+#include "SD.h"
 
 class ArduinoGPTChat {
   public:
     ArduinoGPTChat(const char* apiKey);
     String sendMessage(String message);
     bool textToSpeech(String text);
+    String speechToText(const char* audioFilePath);
     
   private:
     const char* _apiKey;
     String _apiUrl = "https://api.chatanywhere.tech/v1/chat/completions";
     String _ttsApiUrl = "https://api.chatanywhere.tech/v1/audio/speech";
+    String _sttApiUrl = "https://api.chatanywhere.tech/v1/audio/transcriptions";
     String _buildPayload(String message);
     String _processResponse(String response);
     String _buildTTSPayload(String text);
+    String _buildMultipartForm(const char* audioFilePath, String boundary);
 };
 
 #endif
