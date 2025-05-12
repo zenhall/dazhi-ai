@@ -14,6 +14,7 @@ class ArduinoGPTChat {
     String sendMessage(String message);
     bool textToSpeech(String text);
     String speechToText(const char* audioFilePath);
+    String speechToTextFromBuffer(uint8_t* audioBuffer, size_t bufferSize);
     
   private:
     const char* _apiKey;

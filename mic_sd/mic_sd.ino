@@ -1,6 +1,4 @@
 #include "ESP_I2S.h"
-#include "FS.h"
-#include "SD.h"
 #include <WiFi.h>
 #include "ArduinoGPTChat.h"
 
@@ -11,8 +9,6 @@ const char* password = "xbotpark";
 // API密钥
 const char* apiKey = "sk-CkxIb6MfdTBgZkdm0MtUEGVGk6Q6o5X5BRB1DwE2BdeSLSqB"; // 替换为您的API密钥
 
-// 音频文件路径
-const char* audioFilePath = "/arduinor_rec.wav";
 
 // 创建GPT对话实例
 ArduinoGPTChat gptChat(apiKey);
@@ -43,16 +39,7 @@ void setup() {
   }
 
   Serial.println("I2S bus initialized.");
-  Serial.println("Initializing SD card...");
-
-  // Set up the pins used for SD card access
-  if(!SD.begin(21)){
-    Serial.println("Failed to mount SD Card!");
-    while (1) ;
-  }
-  Serial.println("SD card initialized.");
-  Serial.println("Recording 20 seconds of audio data...");
-
+  
   // Record 3 seconds of audio data (可以根据需要调整录音时间)
   Serial.println("Recording audio for 3 seconds...");
   wav_buffer = i2s.recordWAV(3, &wav_size);
@@ -63,33 +50,6 @@ void setup() {
   }
   
   Serial.println("Audio recorded successfully, size: " + String(wav_size) + " bytes");
-
-  // Create a file on the SD card
-  File file = SD.open("/arduinor_rec.wav", FILE_WRITE);
-  if (!file) {
-    Serial.println("Failed to open file for writing!");
-    return;
-  }
-
-  Serial.println("Writing audio data to file...");
-
-  // Write the audio data to the file
-  size_t bytesWritten = file.write(wav_buffer, wav_size);
-  if (bytesWritten != wav_size) {
-    Serial.println("Failed to write audio data to file!");
-    Serial.println("Wrote " + String(bytesWritten) + " of " + String(wav_size) + " bytes");
-    file.close();
-    free(wav_buffer); // 释放缓冲区内存
-    return;
-  }
-
-  // Close the file
-  file.close();
-  
-  // 释放缓冲区内存
-  free(wav_buffer);
-
-  Serial.println("Audio recording saved to SD card.");
   
   // 连接WiFi
   Serial.println("Connecting to WiFi...");
@@ -105,12 +65,15 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   
-  // 调用STT功能将音频转换为文本
+  // 直接使用内存中的wav_buffer调用STT功能
   Serial.println("Converting speech to text...");
-  Serial.println("Using audio file: " + String(audioFilePath));
+  Serial.println("Using audio buffer in memory");
   Serial.println("This may take some time depending on the file size...");
   
-  String transcribedText = gptChat.speechToText(audioFilePath);
+  String transcribedText = gptChat.speechToTextFromBuffer(wav_buffer, wav_size);
+  
+  // 释放缓冲区内存
+  free(wav_buffer);
   
   // 显示转换结果
   Serial.println("Transcription result:");
