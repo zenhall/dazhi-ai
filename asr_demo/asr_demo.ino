@@ -37,10 +37,6 @@ unsigned int connectRetryDelay = 30000; // 初始重试延迟30秒
 int connectFailCount = 0;
 bool limitErrorOccurred = false; // 是否出现过限制错误
 
-// 自动检测句子完成的变量
-unsigned long lastResultTime = 0; // 上次接收到识别结果的时间
-const unsigned long SILENCE_TIMEOUT = 900; // 沉默超时时间（毫秒），超过这个时间没有新结果则认为句子结束
-
 // WebSocket客户端
 WebsocketsClient client;
 String currentSentence = "";
@@ -121,9 +117,6 @@ void loop() {
     
     // 读取音频数据并发送
     readAndSendAudio();
-    
-    // 检查句子是否完成
-    checkSentenceCompletion();
   } 
   else {
     // 检查是否需要尝试重新连接
@@ -366,26 +359,10 @@ void sendEndTag() {
   }
 }
 
-// 检查句子是否完成
-void checkSentenceCompletion() {
-  // 当前时间
-  unsigned long currentTime = millis();
-  
-  // 如果有当前正在处理的句子，检查是否超时
-  if (currentSentence.length() > 0 && (currentTime - lastResultTime > SILENCE_TIMEOUT)) {
-    // 句子已超时，认为一句话已结束
-    Serial.println("\n【检测到一句话已说完!】");
-    updateCompletedSentences();
-  }
-}
-
 // WebSocket消息回调
 void onMessageCallback(WebsocketsMessage message) {
   String payload = message.data();
   Serial.println("收到消息: " + payload);
-  
-  // 更新最后接收结果的时间
-  lastResultTime = millis();
   
   // 解析JSON响应
   DynamicJsonDocument doc(2048);
@@ -411,8 +388,6 @@ void onMessageCallback(WebsocketsMessage message) {
     if (text.length() > 0) {
       currentSentence = text;
       Serial.println("当前识别: " + currentSentence);
-      // 更新最后接收结果的时间
-      lastResultTime = millis();
     }
   } 
   else if (strcmp(action, "error") == 0) {
