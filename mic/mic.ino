@@ -29,9 +29,16 @@ int16_t audioBuffer[BUFFER_SIZE]; // 音频缓冲区
 unsigned long lastSendTime = 0;
 const int SEND_INTERVAL = 40; // 发送间隔，单位毫秒
 
+// 连接控制
+bool wsConnected = false;
+bool isConnecting = false;
+unsigned long lastConnectAttemptTime = 0;
+unsigned int connectRetryDelay = 30000; // 初始重试延迟30秒
+int connectFailCount = 0;
+bool limitErrorOccurred = false; // 是否出现过限制错误
+
 // WebSocket客户端
 WebsocketsClient client;
-bool wsConnected = false;
 String currentSentence = "";
 String completedSentences[5]; // 存储最近5个已完成的句子
 int sentenceCount = 0;
@@ -112,9 +119,22 @@ void loop() {
     readAndSendAudio();
   } 
   else {
-    // 如果连接断开，尝试重新连接
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("尝试重新连接WebSocket服务器...");
+    // 检查是否需要尝试重新连接
+    unsigned long currentTime = millis();
+    
+    if (!isConnecting && 
+        WiFi.status() == WL_CONNECTED && 
+        (currentTime - lastConnectAttemptTime > connectRetryDelay)) {
+      
+      // 如果之前出现过限制错误，使用更长的延迟
+      if (limitErrorOccurred && connectRetryDelay < 120000) {
+        connectRetryDelay = 120000; // 2分钟
+        Serial.println("因之前出现连接限制错误，采用更长的重连延迟");
+      }
+      
+      Serial.print("尝试重新连接WebSocket服务器... (延迟: ");
+      Serial.print(connectRetryDelay / 1000);
+      Serial.println("秒)");
       connectToASRServer();
     }
   }
@@ -122,6 +142,9 @@ void loop() {
 
 // 连接讯飞ASR服务器
 void connectToASRServer() {
+  isConnecting = true;
+  lastConnectAttemptTime = millis();
+  
   // 获取当前时间戳
   time_t now;
   time(&now);
@@ -138,8 +161,13 @@ void connectToASRServer() {
     // 如果仍然无效，使用当前时间
     if (now < 1600000000 || now > 2500000000) {
       Serial.println("无法获取有效时间，使用当前时间");
-      now = millis() / 1000 + 1682000000; // 使用一个基于启动时间的时间戳
+      randomSeed(millis());
+      now = 1747232100 + random(100, 999); // 使用2025年5月的时间戳
     }
+  } else {
+    // 添加一些随机性，避免每次使用完全相同的时间戳
+    randomSeed(millis());
+    now += random(1, 100);
   }
   
   String ts = String(now);
@@ -154,17 +182,32 @@ void connectToASRServer() {
   Serial.println("正在连接讯飞WebSocket服务器...");
   Serial.println("URL: " + url);
   
+  // 关闭任何可能存在的旧连接
+  if (client.available()) {
+    client.close();
+    delay(1000); // 等待连接完全关闭
+  }
+  
   // 尝试连接
   bool connected = client.connect(url);
   if (connected) {
     Serial.println("WebSocket连接成功!");
     wsConnected = true;
+    connectFailCount = 0; // 重置失败计数
   } else {
     Serial.println("WebSocket连接失败!");
     wsConnected = false;
-    // 连接失败后等待一段时间再重试
-    delay(5000);
+    connectFailCount++;
+    
+    // 实现指数退避策略，但因为接口限制，增加最小重试时间
+    if (connectRetryDelay < 30000) {
+      connectRetryDelay = 30000; // 至少30秒
+    } else if (connectFailCount > 2) {
+      connectRetryDelay = min(300000U, connectRetryDelay * 2); // 最长5分钟
+    }
   }
+  
+  isConnecting = false;
 }
 
 // Base64编码函数
@@ -336,6 +379,8 @@ void onMessageCallback(WebsocketsMessage message) {
   
   if (strcmp(action, "started") == 0) {
     Serial.println("识别开始");
+    // 重置限制错误标志
+    limitErrorOccurred = false;
   } 
   else if (strcmp(action, "result") == 0) {
     // 提取识别文本
@@ -346,8 +391,26 @@ void onMessageCallback(WebsocketsMessage message) {
     }
   } 
   else if (strcmp(action, "error") == 0) {
-    Serial.println("识别错误");
+    String errorCode = doc["code"].as<String>();
+    String errorDesc = doc["desc"].as<String>();
+    
+    Serial.print("识别错误 [");
+    Serial.print(errorCode);
+    Serial.print("]: ");
+    Serial.println(errorDesc);
+    
     wsConnected = false;
+    
+    // 处理特定错误
+    if (errorCode == "10800") {
+      Serial.println("连接限制错误，增加重连延迟");
+      limitErrorOccurred = true;
+      connectRetryDelay = 120000; // 设置为2分钟
+    } 
+    else if (errorCode == "10105") {
+      Serial.println("时间戳过期错误，强制重新同步时间");
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    }
   }
 }
 
