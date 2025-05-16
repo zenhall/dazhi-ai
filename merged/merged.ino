@@ -55,6 +55,9 @@ bool recordingMode = false;
 bool wsConnected = false;
 bool isConnecting = false;
 bool processingGPT = false; // 是否正在处理GPT请求
+bool ttsPlaying = false;    // 是否正在播放TTS
+unsigned long ttsStartTime = 0; // TTS开始播放的时间
+unsigned long ttsTimeout = 30000; // TTS超时时间（30秒）
 
 // 连接控制
 unsigned long lastConnectAttemptTime = 0;
@@ -82,6 +85,7 @@ String urlEncode(String str);
 void connectToASRServer();
 void chatGptCall(String message);
 void ttsCall(String text);
+void checkTTSPlayback();
 
 void setup() {
   // 初始化串口通信
@@ -163,6 +167,9 @@ void loop() {
   // 处理音频循环（TTS播放）
   audio.loop();
   
+  // 检查TTS播放状态
+  checkTTSPlayback();
+  
   // 处理串口命令
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
@@ -191,11 +198,14 @@ void loop() {
   if (wsConnected) {
     client.poll();
     
-    // 读取音频数据并发送
-    readAndSendAudio();
-    
-    // 检查句子是否完成
-    checkSentenceCompletion();
+    // 只有在不播放TTS时才读取麦克风并发送数据
+    if (!ttsPlaying) {
+      // 读取音频数据并发送
+      readAndSendAudio();
+      
+      // 检查句子是否完成
+      checkSentenceCompletion();
+    }
   } 
   else {
     // 检查是否需要尝试重新连接
@@ -219,6 +229,23 @@ void loop() {
   }
   
   delay(10); // 小延迟以防止CPU过载
+}
+
+// 检查TTS是否已完成播放（超时检测）
+void checkTTSPlayback() {
+  if (ttsPlaying) {
+    // 检查是否已经播放超时
+    if (millis() - ttsStartTime > ttsTimeout) {
+      Serial.println("TTS播放超时，恢复麦克风输入");
+      ttsPlaying = false; // 停止TTS播放标志
+    }
+    
+    // 检查音频是否还在播放
+    if (!audio.isRunning()) {
+      Serial.println("TTS播放完成，恢复麦克风输入");
+      ttsPlaying = false; // 停止TTS播放标志
+    }
+  }
 }
 
 // 连接讯飞ASR服务器
@@ -293,6 +320,11 @@ void connectToASRServer() {
 
 // 读取并发送音频数据
 void readAndSendAudio() {
+  // 如果TTS正在播放，不读取麦克风
+  if (ttsPlaying) {
+    return;
+  }
+  
   unsigned long currentTime = millis();
   
   // 每40ms发送一次音频数据
@@ -442,6 +474,11 @@ String urlEncode(String str) {
 
 // 检查句子是否完成
 void checkSentenceCompletion() {
+  // 如果TTS正在播放，不检查句子完成
+  if (ttsPlaying) {
+    return;
+  }
+  
   // 当前时间
   unsigned long currentTime = millis();
   
@@ -482,6 +519,11 @@ void updateCompletedSentences() {
 
 // WebSocket消息回调
 void onMessageCallback(WebsocketsMessage message) {
+  // 如果TTS正在播放，不处理ASR消息
+  if (ttsPlaying) {
+    return;
+  }
+  
   String payload = message.data();
   Serial.println("收到消息: " + payload);
   
@@ -649,12 +691,18 @@ void chatGptCall(String message) {
 void ttsCall(String text) {
   Serial.println("正在将文本转换为语音...");
   
+  // 在TTS开始播放前设置标志
+  ttsPlaying = true;
+  ttsStartTime = millis(); // 记录开始时间用于超时检测
+  
   // 使用GPTChat的textToSpeech方法
   bool success = gptChat.textToSpeech(text);
   
   if (success) {
     Serial.println("TTS音频正在通过扬声器播放");
+    Serial.println("麦克风输入已临时禁用");
   } else {
     Serial.println("播放TTS音频失败");
+    ttsPlaying = false; // 如果播放失败，重置标志
   }
 }
