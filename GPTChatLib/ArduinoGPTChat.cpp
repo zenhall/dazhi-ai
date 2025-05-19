@@ -21,12 +21,19 @@ String ArduinoGPTChat::sendMessage(String message) {
 }
 
 String ArduinoGPTChat::_buildPayload(String message) {
-  DynamicJsonDocument doc(512);
+  DynamicJsonDocument doc(768);
   doc["model"] = "gpt-4.1-nano";
   JsonArray messages = doc.createNestedArray("messages");
-  JsonObject msg = messages.createNestedObject();
-  msg["role"] = "user";
-  msg["content"] = message;
+  
+  // 添加系统消息，要求简短回答
+  JsonObject sysMsg = messages.createNestedObject();
+  sysMsg["role"] = "system";
+  sysMsg["content"] = "请用简短的语言回答问题，回答不要超过30个字。避免过长的解释，直接给出关键信息。";
+  
+  // 添加用户消息
+  JsonObject userMsg = messages.createNestedObject();
+  userMsg["role"] = "user";
+  userMsg["content"] = message;
 
   String output;
   serializeJson(doc, output);

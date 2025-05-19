@@ -13,7 +13,7 @@
 #define MIC_CLOCK_PIN 41
 
 // 定义录音时长（秒）
-#define RECORDING_DURATION 1
+#define RECORDING_DURATION 2
 
 // WiFi设置
 const char* ssid     = "2nd-curv";  
