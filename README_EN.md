@@ -111,6 +111,13 @@ Core library files that need to be copied to Arduino's libraries folder.
 
 2. **Library Installation**
    - Copy the GPTChatLib folder to Arduino's libraries directory
+   - Install required libraries:
+     - ArduinoWebsoket (v0.5.4)
+     - ESP32-audioI2S-master (v3.0.13)
+       - **Note**: You need to modify the ESP32-audioI2S-master library file:
+       - Open `./ESP32-audioI2S-master/src/Audio.cpp`
+       - Find: `char host[] = "api.openai.com"`
+       - Change it to: `char host[] = "api.chatanywhere.tech"`
 
 3. **API Key Configuration**
    - Enter your OpenAI API key in the code

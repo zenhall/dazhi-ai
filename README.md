@@ -111,6 +111,13 @@
 
 2. **库文件安装**
    - 将GPTChatLib文件夹复制到Arduino的libraries目录
+   - 安装必要的库：
+     - ArduinoWebsoket (v0.5.4)
+     - ESP32-audioI2S-master (v3.0.13)
+       - **注意**：需要修改ESP32-audioI2S-master库文件：
+       - 打开 `./ESP32-audioI2S-master/src/Audio.cpp`
+       - 查找：`char host[] = "api.openai.com"`
+       - 将其修改为：`char host[] = "api.chatanywhere.tech"`
 
 3. **配置API密钥**
    - 在代码中填入您的OpenAI API密钥
