@@ -30,7 +30,7 @@ void setup() {
   }
   
   // 检查test1.png是否存在
-  if(!SPIFFS.exists("/image2.jpg")) {
+  if(!SPIFFS.exists("/image1.jpg")) {
     Serial.println("Cannot find test1.png in flash");
     return;
   }
@@ -38,7 +38,7 @@ void setup() {
   Serial.println("Sending image to GPT for analysis...");
   
   // 发送图片和问题给GPT
-  String response = chat.sendImageMessage("/image2.jpg", "图片里的人在干什么？");
+  String response = chat.sendImageMessage("/image1.jpg", "图片里的人在干什么？");
   
   // 输出识别结果
   Serial.println("GPT Response:");
