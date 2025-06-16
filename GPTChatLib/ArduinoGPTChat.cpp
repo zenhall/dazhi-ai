@@ -1,4 +1,5 @@
 #include "ArduinoGPTChat.h"
+#include <SPIFFS.h>
 
 // Base64编码表
 const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -51,7 +52,7 @@ size_t ArduinoGPTChat::base64_encode_length(size_t input_length) {
 
 String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String question) {
   Serial.println("Opening image file...");
-  File imageFile = SD.open(imageFilePath);
+  File imageFile = SPIFFS.open(imageFilePath);
   if (!imageFile) {
     Serial.println("Failed to open image file");
     return "Error: Failed to open image file";
@@ -60,16 +61,16 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   size_t fileSize = imageFile.size();
   Serial.printf("File size: %d bytes\n", fileSize);
   
-  // 方案2：使用SD卡空间存储base64编码数据
+  // 方案2：使用flash空间存储base64编码数据
   const char* tempBase64File = "/temp_base64.txt";
   
   // 删除可能存在的临时文件
-  if (SD.exists(tempBase64File)) {
-    SD.remove(tempBase64File);
+  if (SPIFFS.exists(tempBase64File)) {
+    SPIFFS.remove(tempBase64File);
   }
   
   // 创建临时文件用于存储base64数据
-  File base64File = SD.open(tempBase64File, FILE_WRITE);
+  File base64File = SPIFFS.open(tempBase64File, FILE_WRITE);
   if (!base64File) {
     Serial.println("Failed to create temp base64 file");
     imageFile.close();
@@ -89,7 +90,7 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
     Serial.println("Failed to allocate buffer memory");
     imageFile.close();
     base64File.close();
-    SD.remove(tempBase64File);
+    SPIFFS.remove(tempBase64File);
     return "Error: Failed to allocate buffer";
   }
   
@@ -99,7 +100,7 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
     free(buffer);
     imageFile.close();
     base64File.close();
-    SD.remove(tempBase64File);
+    SPIFFS.remove(tempBase64File);
     return "Error: Failed to allocate encoded buffer";
   }
   
@@ -114,14 +115,14 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
       free(encodedChunk);
       imageFile.close();
       base64File.close();
-      SD.remove(tempBase64File);
+      SPIFFS.remove(tempBase64File);
       return "Error: Failed to read file chunk";
     }
     
     // 编码当前块
     base64_encode(buffer, bytesRead, encodedChunk);
     
-    // 写入编码数据到SD卡
+    // 写入编码数据到SPIFFS卡
     base64File.print(encodedChunk);
     
     totalProcessed += bytesRead;
@@ -144,10 +145,10 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   imageFile.close();
   base64File.close();
   
-  Serial.println("Base64 encoding completed and saved to SD");
+  Serial.println("Base64 encoding completed and saved to SPIFFS");
   
   // 检查生成的base64文件大小
-  File checkFile = SD.open(tempBase64File);
+  File checkFile = SPIFFS.open(tempBase64File);
   if (!checkFile) {
     Serial.println("Failed to open temp base64 file for reading");
     return "Error: Failed to open temp base64 file";
@@ -201,14 +202,14 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   
   // 创建一个临时文件来存储完整的JSON
   const char* tempJsonFile = "/temp_json.txt";
-  if (SD.exists(tempJsonFile)) {
-    SD.remove(tempJsonFile);
+  if (SPIFFS.exists(tempJsonFile)) {
+    SPIFFS.remove(tempJsonFile);
   }
   
-  File jsonFile = SD.open(tempJsonFile, FILE_WRITE);
+  File jsonFile = SPIFFS.open(tempJsonFile, FILE_WRITE);
   if (!jsonFile) {
     Serial.println("Failed to create temp JSON file");
-    SD.remove(tempBase64File);
+    SPIFFS.remove(tempBase64File);
     return "Error: Failed to create temp JSON file";
   }
   
@@ -217,12 +218,12 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   
   // 分块读取base64数据并写入JSON文件
   Serial.println("Copying base64 data to JSON file...");
-  File base64ReadFile = SD.open(tempBase64File);
+  File base64ReadFile = SPIFFS.open(tempBase64File);
   if (!base64ReadFile) {
     Serial.println("Failed to open base64 file for reading");
     jsonFile.close();
-    SD.remove(tempBase64File);
-    SD.remove(tempJsonFile);
+    SPIFFS.remove(tempBase64File);
+    SPIFFS.remove(tempJsonFile);
     return "Error: Failed to read base64 file";
   }
   
@@ -232,8 +233,8 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
     Serial.println("Failed to allocate copy buffer");
     base64ReadFile.close();
     jsonFile.close();
-    SD.remove(tempBase64File);
-    SD.remove(tempJsonFile);
+    SPIFFS.remove(tempBase64File);
+    SPIFFS.remove(tempJsonFile);
     return "Error: Failed to allocate copy buffer";
   }
   
@@ -258,13 +259,13 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   jsonFile.close();
   
   // 清理base64临时文件
-  SD.remove(tempBase64File);
+  SPIFFS.remove(tempBase64File);
   
   // 检查JSON文件大小
-  File checkJsonFile = SD.open(tempJsonFile);
+  File checkJsonFile = SPIFFS.open(tempJsonFile);
   if (!checkJsonFile) {
     Serial.println("Failed to open JSON file for size check");
-    SD.remove(tempJsonFile);
+  SPIFFS.remove(tempJsonFile);
     return "Error: Failed to open JSON file";
   }
   
@@ -280,7 +281,7 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   
   if (!client.connect("api.chatanywhere.tech", 443)) {
     Serial.println("Failed to connect to server");
-    SD.remove(tempJsonFile);
+    SPIFFS.remove(tempJsonFile);
     return "Error: Failed to connect to server";
   }
   
@@ -300,11 +301,11 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   Serial.println("Streaming JSON file...");
   
   // 流式发送JSON文件
-  File sendJsonFile = SD.open(tempJsonFile);
+  File sendJsonFile = SPIFFS.open(tempJsonFile);
   if (!sendJsonFile) {
     Serial.println("Failed to open JSON file for streaming");
     client.stop();
-    SD.remove(tempJsonFile);
+    SPIFFS.remove(tempJsonFile);
     return "Error: Failed to open JSON file for streaming";
   }
   
@@ -314,7 +315,7 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
     Serial.println("Failed to allocate stream buffer");
     sendJsonFile.close();
     client.stop();
-    SD.remove(tempJsonFile);
+    SPIFFS.remove(tempJsonFile);
     return "Error: Failed to allocate stream buffer";
   }
   
@@ -335,7 +336,7 @@ String ArduinoGPTChat::sendImageMessage(const char* imageFilePath, String questi
   
   free(streamBuffer);
   sendJsonFile.close();
-  SD.remove(tempJsonFile);
+  SPIFFS.remove(tempJsonFile);
   
   Serial.printf("Total streamed: %d bytes\n", totalStreamed);
   Serial.println("Waiting for response...");
