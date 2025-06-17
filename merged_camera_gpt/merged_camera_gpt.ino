@@ -109,7 +109,7 @@ void analyzeImageWithGPT(const char* filename) {
     Serial.printf("Sending image %s to GPT for analysis...\n", filename);
     
     // 发送图片和问题给GPT
-    String response = chat.sendImageMessage(filename, "请描述这张图片中的内容，包括人物、物体、场景等详细信息。");
+    String response = chat.sendImageMessage(filename, "请识别一下这是什么种类的植物或者动物。");
     
     // 输出识别结果
     Serial.println("=== GPT Analysis Result ===");
@@ -210,7 +210,7 @@ void loop() {
       // Save photo to file
       size_t out_len = 0;
       uint8_t* out_buf = NULL;
-      esp_err_t ret = frame2jpg(fb, 12, &out_buf, &out_len);
+      esp_err_t ret = frame2jpg(fb, 255, &out_buf, &out_len);
       if (ret == false) {
         Serial.printf("JPEG conversion failed");
       } else {

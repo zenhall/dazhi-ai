@@ -113,7 +113,7 @@ void setup() {
   //config.pixel_format = PIXFORMAT_JPEG; // for streaming
   config.pixel_format = PIXFORMAT_RGB565;
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
-  config.jpeg_quality = 12;
+  config.jpeg_quality = 0;
   config.fb_count = 1;
   
   // 检查PSRAM是否可用
@@ -129,7 +129,7 @@ void setup() {
   //                      for larger pre-allocated frame buffer.
   if(config.pixel_format == PIXFORMAT_JPEG){
     if(psramFound()){
-      config.jpeg_quality = 10;
+      config.jpeg_quality = 0;
       config.fb_count = 2;
       config.grab_mode = CAMERA_GRAB_LATEST;
     } else {
@@ -192,7 +192,7 @@ void loop() {
       // Save photo to file
       size_t out_len = 0;
       uint8_t* out_buf = NULL;
-      esp_err_t ret = frame2jpg(fb, 12, &out_buf, &out_len);
+      esp_err_t ret = frame2jpg(fb, 254, &out_buf, &out_len);
       if (ret == false) {
         Serial.printf("JPEG conversion failed");
       } else {
