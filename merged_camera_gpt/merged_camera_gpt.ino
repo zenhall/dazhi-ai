@@ -14,9 +14,11 @@
 #define CAMERA_MODEL_XIAO_ESP32S3 // Has PSRAM
 #define TOUCH_INT D7
 
-// WiFi和API配置
+// // WiFi和API配置
 const char* ssid = "2nd-curv";
 const char* password = "xbotpark";
+// const char* ssid = "zh";
+// const char* password = "6666666";
 const char* apiKey = "sk-CkxIb6MfdTBgZkdm0MtUEGVGk6Q6o5X5BRB1DwE2BdeSLSqB";
 
 // 摄像头引脚定义
@@ -49,6 +51,60 @@ bool wifi_connected = false;       // WiFi connection status
 
 TFT_eSPI tft = TFT_eSPI();
 ArduinoGPTChat chat(apiKey);
+
+// 扫描SPIFFS中已有的图片文件，找到最大编号
+void findMaxImageNumber() {
+    int maxNumber = 0;
+    
+    // 打开根目录
+    File root = SPIFFS.open("/");
+    if (!root) {
+        Serial.println("Failed to open directory");
+        return;
+    }
+    
+    if (!root.isDirectory()) {
+        Serial.println("Not a directory");
+        return;
+    }
+    
+    // 遍历目录中的所有文件
+    File file = root.openNextFile();
+    while (file) {
+        String fileName = file.name();
+        Serial.printf("Found file: %s\n", fileName.c_str());
+        
+        // 检查文件名是否符合 "imageXX.jpg" 格式（支持有无前导斜杠的情况）
+        bool isImageFile = false;
+        String numberStr = "";
+        
+        if (fileName.startsWith("/image") && fileName.endsWith(".jpg")) {
+            // 有前导斜杠的情况：/imageXX.jpg
+            numberStr = fileName.substring(6); // 去掉 "/image" 前缀
+            numberStr = numberStr.substring(0, numberStr.length() - 4); // 去掉 ".jpg" 后缀
+            isImageFile = true;
+        } else if (fileName.startsWith("image") && fileName.endsWith(".jpg")) {
+            // 无前导斜杠的情况：imageXX.jpg
+            numberStr = fileName.substring(5); // 去掉 "image" 前缀
+            numberStr = numberStr.substring(0, numberStr.length() - 4); // 去掉 ".jpg" 后缀
+            isImageFile = true;
+        }
+        
+        if (isImageFile && numberStr.length() > 0) {
+            int number = numberStr.toInt();
+            if (number > 0 && number > maxNumber) { // 确保是有效的正数
+                maxNumber = number;
+            }
+            Serial.printf("Extracted number: %d, current max: %d\n", number, maxNumber);
+        }
+        
+        file = root.openNextFile();
+    }
+    
+    // 设置下一个文件编号
+    imageCount = maxNumber + 1;
+    Serial.printf("Next image will be saved as: image%d.jpg\n", imageCount);
+}
 
 // 打印内存使用情况
 void printMemoryUsage() {
@@ -185,6 +241,9 @@ void setup() {
     }
     sd_sign = true;
     Serial.println("SPIFFS initialized");
+    
+    // 扫描已有文件，设置正确的文件编号
+    findMaxImageNumber();
     
     // 打印初始内存使用情况
     printMemoryUsage();
