@@ -10,7 +10,7 @@
 
 English | [简体中文](./README.md)
 
-<img src="img/img1.png" alt="Framework Diagram" width="600"/>
+
 
 </div>
 
@@ -22,11 +22,12 @@ English | [简体中文](./README.md)
 - [Code Description](#-code-description)
 - [Hardware Requirements](#-hardware-requirements)
 - [Quick Start](#-quick-start)
+- [Example Projects](#-example-projects)
 - [Community](#-community)
 
 ## 📝 Project Introduction
 
-Dazhi-AI is a serverless AI voice assistant developed entirely on the ESP32 platform using the Arduino environment. It allows you to run AI voice interactions directly on ESP32 devices without the need for additional server support.
+Dazhi-AI is a serverless AI voice assistant developed entirely on the ESP32 platform using the Arduino environment. It allows you to run AI voice interactions directly on ESP32 devices without the need for additional server support. It now supports multimodal capabilities for both voice and visual AI interactions.
 
 ## 🚀 Key Features
 
@@ -44,12 +45,18 @@ Dazhi-AI is a serverless AI voice assistant developed entirely on the ESP32 plat
 - AI processing
 - Voice output
 
+✅ **Multimodal Capabilities**:
+- Image recognition
+- Visual analysis
+- Scene understanding
+
 ## 🔧 System Architecture
 
-![Framework Diagram](img/img1.png)
+
 
 The system uses a modular design with the following key components:
 - Voice Input (Speech-to-Text)
+- Visual Input (Camera)
 - AI Processing (ChatGPT)
 - Voice Output (Text-to-Speech)
 
@@ -63,6 +70,7 @@ Core library files that need to be copied to Arduino's libraries folder.
 | ChatGPT Communication | Communicates with OpenAI API, handles requests and responses |
 | TTS | Text-to-Speech functionality, converts AI replies to voice |
 | STT | Speech-to-Text functionality, converts user input to text |
+| Image Recognition | Sends images to GPT for analysis and recognition |
 | Audio Processing | Processes and converts various audio data formats |
 
 ### Implementation Version Comparison
@@ -76,11 +84,17 @@ Core library files that need to be copied to Arduino's libraries folder.
 
 ### Code Structure
 ```
-├── dazhi_v1/           # Whisper implementation version
-│   └── dazhi_v1.ino    # Main program
-├── dazhi_v2/           # iFLYTEK ASR implementation version
-│   └── dazhi_v2.ino    # Main program
-└── GPTChatLib/         # Core functionality library
+├── dazhi_v1/                  # Whisper implementation version
+│   └── dazhi_v1.ino           # Main program
+├── dazhi_v2/                  # iFLYTEK ASR implementation version
+│   └── dazhi_v2.ino           # Main program
+├── merged_camera_gpt/         # Camera vision recognition example
+│   └── merged_camera_gpt.ino  # Main program
+├── calorie_calculator_camera/ # Calorie calculator example
+│   └── calorie_calculator_camera.ino # Main program
+├── image_recognition_demo/    # Image recognition demo
+│   └── image_recognition_demo.ino # Main program
+└── GPTChatLib/                # Core functionality library
     ├── ArduinoGPTChat.cpp
     └── ArduinoGPTChat.h
 ```
@@ -91,6 +105,8 @@ Core library files that need to be copied to Arduino's libraries folder.
 - **Controller**: XIAO ESP32S3
 - **Audio Amplifier**: MAX98357A
 - **Microphone**: PDM Microphone
+- **Camera**: OV2640 (for vision recognition features)
+- **Display**: Round Display for XIAO (for visual feedback)
 
 ### Pin Connections
 
@@ -101,6 +117,7 @@ Core library files that need to be copied to Arduino's libraries folder.
 | I2S_LRC | 1 |
 | MIC_DATA | 42 |
 | MIC_CLOCK | 41 |
+| TOUCH_INT | D7 |
 
 ## 🚀 Quick Start
 
@@ -118,6 +135,8 @@ Core library files that need to be copied to Arduino's libraries folder.
        - Open `./ESP32-audioI2S-master/src/Audio.cpp`
        - Find: `char host[] = "api.openai.com"`
        - Change it to: `char host[] = "api.chatanywhere.tech"`
+     - TFT_eSPI (for display support)
+     - SPIFFS (for file system support)
 
 3. **API Key Configuration**
    - Enter your OpenAI API key in the code
@@ -129,7 +148,28 @@ Core library files that need to be copied to Arduino's libraries folder.
 
 5. **Testing**
    - Open the serial monitor
-   - Follow the prompts for voice interaction
+   - Follow the prompts for voice or visual interaction
+
+## 📚 Example Projects
+
+### Camera Vision Recognition (merged_camera_gpt)
+This example demonstrates how to use the ESP32S3 Sense camera to take photos and send them to GPT for analysis.
+- Touch the screen to take a photo
+- Automatically send the photo to GPT for analysis
+- Display recognition results via serial monitor
+
+### Calorie Calculator (calorie_calculator_camera)
+This example implements a vision-based food calorie calculator.
+- Take photos of food
+- Automatically identify food type
+- Estimate food weight and calorie content
+- Display analysis results on screen
+
+### Image Recognition Demo (image_recognition_demo)
+A simple image recognition demo to test the image recognition capabilities of GPTChatLib.
+- Read images from SPIFFS
+- Send to GPT for analysis
+- Display recognition results
 
 ## 💬 Community
 
